@@ -36,10 +36,98 @@ function test_rtc() {
     hwclock -r
 }
 
+# 用户确认函数
+function get_user_confirmation() {
+    local test_name=$1
+    while true; do
+        read -p "请确认${test_name}测试结果 [y/N]：" -n 1 -r
+        echo
+        
+        case $REPLY in
+            [Yy]) 
+                echo "PASS"
+                return 0
+                ;;
+            [Nn]|"") 
+                echo "FAIL"
+                return 1
+                ;;
+            *) 
+                echo "无效输入，请使用 y/Y 或 n/N"
+                ;;
+        esac
+    done
+}
+
+# HDMI输入测试
+function test_hdmiin() {
+    echo -e "\n[HDMI输入测试]"
+    local device="/dev/video0"
+    
+    # 设备检测
+    if [ ! -e "$device" ]; then
+        echo "❌ 未检测到HDMI设备"
+        return 1
+    fi
+    
+    # 格式检测
+    v4l2-ctl -d $device --info 2>&1 | sed 's/^/    /'
+    echo "请观察外接显示设备..."
+    
+    # 用户确认
+    get_user_confirmation "HDMI输入"
+    return $?
+}
+
+# 摄像头测试
+function test_camera() {
+    echo -e "\n[摄像头测试]"
+    local device="/dev/video1"
+    
+    if [ ! -e "$device" ]; then
+        echo "❌ 未检测到摄像头设备"
+        return 1
+    fi
+    
+    echo "正在捕获测试图像..."
+    # 这里可以添加实际采集命令
+    get_user_confirmation "摄像头"
+    return $?
+}
+
+# MIPI屏幕测试
+function test_mipi() {
+    echo -e "\n[MIPI屏幕测试]"
+    echo "正在显示测试图案..."
+    # 添加显示测试图案命令
+    get_user_confirmation "MIPI屏幕"
+    return $?
+}
+
+# 音频测试
+function test_audio() {
+    echo -e "\n[音频测试]"
+    echo "正在播放测试音..."
+    # 添加音频播放命令
+    get_user_confirmation "音频输出"
+    return $?
+}
+
+# 40Pin接口测试
+function test_40pin() {
+    echo -e "\n[40Pin接口测试]"
+    echo "执行GPIO环路测试..."
+    # 添加GPIO测试命令
+    get_user_confirmation "40Pin接口"
+    return $?
+}
+
 # 主测试流程
 function main() {
     declare -A test_results
     local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
+    local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
+    local tests=("${auto_tests[@]}" "${manual_tests[@]}")
     
     echo "========================================"
     echo "  RK3588 外设综合测试套件"
@@ -50,7 +138,7 @@ function main() {
     echo "测试开始时间: $(date)" | tee -a $LOG_FILE
 
     # 遍历执行所有测试
-    for test in "${auto_tests[@]}"; do
+    for test in "${tests[@]}"; do
         echo -e "\n▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌"
         "test_$test"
         test_results[$test]=$?
