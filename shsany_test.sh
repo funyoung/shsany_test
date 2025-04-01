@@ -127,14 +127,16 @@ function test_40pin() {
 # 主测试流程
 function main() {
     declare -A test_results
+    declare -a test_order  # 存储测试执行顺序
     local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
     local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
     local tests=("${auto_tests[@]}" "${manual_tests[@]}")
-    
+
     echo "========================================"
     echo "  RK3588 外设综合测试套件"
     echo "========================================"
-    
+
+    local LOG_FILE="rk3588_test.log"
     echo "RK3588 外设接口自动化测试" | tee $LOG_FILE
     echo "测试开始时间: $(date)" | tee -a $LOG_FILE
 
@@ -143,33 +145,25 @@ function main() {
         echo -e "\n▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌"
         "test_$test"
         test_results[$test]=$?
+        test_order+=("$test")  # 按顺序记录测试项
         sleep 1
     done
 
-#    # 依次执行测试
-#    test_network
-#    test_m2_ssd
-#    test_sata
-#    test_usb
-#    test_typec
-#    test_rtc
-
     echo "测试结束时间: $(date)" | tee -a $LOG_FILE
     echo "所有测试完成" | tee -a $LOG_FILE
-
 
     # 生成测试报告
     echo -e "\n\n========================================"
     echo "          测试报告"
     echo "========================================"
     
-    for test in "${!test_results[@]}"; do
+    for test in "${test_order[@]}"; do
         local result="❌ FAIL"
         [ ${test_results[$test]} -eq 0 ] && result="✅ PASS"
         printf "%-12s %s\n" "${test}测试:" "$result"
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] ${test}测试: $result" >> $LOG_FILE
     done
-    
+
     # 总体结果判断
     [[ "${test_results[@]}" =~ 1 ]] && return 1 || return 0
 }
