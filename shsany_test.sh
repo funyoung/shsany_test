@@ -88,15 +88,16 @@ function test_hdmiin() {
 # 摄像头测试
 function test_camera() {
     echo -e "\n[摄像头测试]"
-    local device="/dev/video1"
+    local device="/dev/video11"
     
     if [ ! -e "$device" ]; then
         echo "❌ 未检测到摄像头设备"
         return 1
     fi
     
-    echo "正在捕获测试图像..."
+    echo "正在捕获测试图像...按[CTRL + C]退出图像捕获"
     # 这里可以添加实际采集命令
+    gst-launch-1.0 v4l2src device="$device" ! video/x-raw,format=NV12,width=3840,height=2160,framerate=30/1 ! videoconvert ! autovideosink
     get_user_confirmation "摄像头"
     return $?
 }
