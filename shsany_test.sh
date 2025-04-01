@@ -111,6 +111,7 @@ function test_audio() {
     echo -e "\n[音频测试]"
     echo "正在播放测试音..."
     # 添加音频播放命令
+    play ./piano2-CoolEdit.mp3
     get_user_confirmation "音频输出"
     return $?
 }
