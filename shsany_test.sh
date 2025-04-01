@@ -39,7 +39,7 @@ function test_rtc() {
 # 主测试流程
 function main() {
     declare -A test_results
-    local tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
+    local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
     
     echo "========================================"
     echo "  RK3588 外设综合测试套件"
@@ -50,7 +50,7 @@ function main() {
     echo "测试开始时间: $(date)" | tee -a $LOG_FILE
 
     # 遍历执行所有测试
-    for test in "${tests[@]}"; do
+    for test in "${auto_tests[@]}"; do
         echo -e "\n▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌"
         "test_$test"
         test_results[$test]=$?
