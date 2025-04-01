@@ -1,5 +1,7 @@
 #!/bin/bash
 
+local LOG_FILE="rk3588_test.log"
+
 # 1. 测试网卡
 function test_network() {
     echo "测试网卡..." | tee -a $LOG_FILE
@@ -133,7 +135,6 @@ function main() {
     echo "  RK3588 外设综合测试套件"
     echo "========================================"
     
-    local LOG_FILE="rk3588_test.log"
     echo "RK3588 外设接口自动化测试" | tee $LOG_FILE
     echo "测试开始时间: $(date)" | tee -a $LOG_FILE
 
