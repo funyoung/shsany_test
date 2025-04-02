@@ -146,8 +146,10 @@ function load_config() {
 # 主测试流程
 function main() {
     declare -A test_results
+    declare -a test_order  # 存储测试执行顺序
     local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
     local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
+    local tests=("${auto_tests[@]}" "${manual_tests[@]}")
     
     # 加载配置文件
     load_config
@@ -160,29 +162,14 @@ function main() {
     echo "RK3588 外设接口自动化测试" | tee $LOG_FILE
     echo "测试开始时间: $(date)" | tee -a $LOG_FILE
 
-    # 执行自动测试
-    echo -e "\n[自动测试集]"
-    for test in "${auto_tests[@]}"; do
+    # 遍历执行所有测试
+    for test in "${tests[@]}"; do
         # 检查配置是否启用
         if [[ "${config[$test]}" == "1" ]]; then
             echo -e "\n▌执行测试：$test"
             "test_$test"
             test_results[$test]=$?
-            sleep 1
-        else
-            echo -e "\n▌跳过测试：$test (配置禁用)"
-            test_results[$test]="SKIP"
-        fi
-    done
-
-    # 执行手动测试
-    echo -e "\n\n[手动验证测试集]"
-    for test in "${manual_tests[@]}"; do
-        # 检查配置是否启用
-        if [[ "${config[$test]}" == "1" ]]; then
-            echo -e "\n▌执行测试：$test"
-            "test_$test"
-            test_results[$test]=$?
+            test_order+=("$test")  # 按顺序记录测试项
             sleep 1
         else
             echo -e "\n▌跳过测试：$test (配置禁用)"
@@ -198,7 +185,7 @@ function main() {
     echo "          测试报告"
     echo "========================================"
     
-    for test in "${!test_results[@]}"; do
+    for test in "${test_order[@]}"; do
         case "${test_results[$test]}" in
             0)
                 result="✅ PASS"
