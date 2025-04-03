@@ -9,7 +9,46 @@ LOG_FILE="rk3588_test.log"
 # 1. 测试网卡
 function test_network() {
     echo "测试网卡..." | tee -a $LOG_FILE
-    ping -c 4 8.8.8.8 &> /dev/null
+#    ping -c 4 8.8.8.8 &> /dev/null
+    local distro=""
+    local nic1=""
+    local nic2=""
+    local ip1="192.168.1.10"
+    local ip2="192.168.1.11"
+    
+    # 检测发行版
+    if grep -qi "debian" /etc/os-release; then
+        distro="debian"
+        nic1="end0"
+        nic2="end1"
+    elif grep -qi "ubuntu" /etc/os-release; then
+        distro="ubuntu"
+        nic1="eth0"
+        nic2="eth1"
+    else
+        echo "Unsupported distribution"
+        return 1
+    fi
+    
+    # 检查网卡是否存在
+    if ! ip link show "$nic1" >/dev/null 2>&1 || ! ip link show "$nic2" >/dev/null 2>&1; then
+        echo "One or both network interfaces ($nic1, $nic2) not found"
+        return 2
+    fi
+    
+    # 设置IP地址
+    echo "Configuring $nic1 with $ip1 and $nic2 with $ip2"
+    sudo ip addr add "$ip1"/24 dev "$nic1"
+    sudo ip addr add "$ip2"/24 dev "$nic2"
+    
+    # 验证设置
+    if ip addr show "$nic1" | grep -q "$ip1" && ip addr show "$nic2" | grep -q "$ip2"; then
+        echo "IP addresses configured successfully"
+        return 0
+    else
+        echo "Failed to configure IP addresses"
+        return 3
+    fi
 }
 
 # 2. 测试 M.2 硬盘
