@@ -65,8 +65,29 @@ function test_sata() {
 
 # 4. 测试 USB2.0 & USB3.0
 function test_usb() {
-    echo "测试 USB 设备..." | tee -a $LOG_FILE
-    lsusb | tee -a $LOG_FILE
+    #echo "测试 USB 设备..." | tee -a $LOG_FILE
+    #lsusb | tee -a $LOG_FILE
+    echo "测试 USB 设备及其速度..." | tee -a $LOG_FILE
+    # 输出 usb-devices 信息并保存到变量中
+    usb_info=$(usb-devices)
+    #echo "$usb_info" | tee -a $LOG_FILE
+
+    # 查找所有设备的速度信息
+    echo "检测到以下设备速度信息：" | tee -a $LOG_FILE
+    echo "$usb_info" | grep "Spd=" | tee -a $LOG_FILE
+
+    # 针对每个设备做初步判断
+    if echo "$usb_info" | grep -q "Spd=480"; then
+        echo "检测到 USB 2.0 设备" | tee -a $LOG_FILE
+    else
+        return 1
+    fi
+    if echo "$usb_info" | grep -q "Spd=5000"; then
+        echo "检测到 USB 3.0 设备" | tee -a $LOG_FILE
+    else
+        return 2
+    fi
+    return 0
 }
 
 # 5. 测试 Type-C
