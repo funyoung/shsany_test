@@ -6,6 +6,10 @@ CONFIG_FILE="test.conf"
 # 日志文件路径
 LOG_FILE="rk3588_test.log"
 
+log() {
+    echo "[TEST_LOG] $1" | tee -a $LOG_FILE
+}
+
 # 1. 测试网卡
 function test_network() {
     echo "测试网卡..." | tee -a $LOG_FILE
@@ -52,9 +56,60 @@ function test_network() {
 }
 
 # 2. 测试 M.2 硬盘
+M2_DEVICE=""
+M2_MOUNT_POINT="/mnt/m2disk"
+M2_TEST_FILE="m2_test_file.txt"
+M2_TEST_STRING="RK3588_M2_DISK_TEST"
+function mount_m2_disk() {
+    mkdir -p "$M2_MOUNT_POINT"
+    if mount | grep -q "$M2_MOUNT_POINT"; then
+        umount "$M2_MOUNT_POINT"
+    fi
+    mount "${M2_DEVICE}p1" "$M2_MOUNT_POINT" 2>/dev/null || mount "${M2_DEVICE}" "$M2_MOUNT_POINT"
+    return $?
+}
+
+function rw_test_m2() {
+    echo "$M2_TEST_STRING" > "$M2_MOUNT_POINT/$M2_TEST_FILE"
+    read_back=$(cat "$M2_MOUNT_POINT/$M2_TEST_FILE")
+    if [ "$read_back" == "$M2_TEST_STRING" ]; then
+        log "读写测试通过"
+        return 0
+    else
+        log "读写测试失败"
+        return 1
+    fi
+}
+
+# 清理挂载
+function cleanup_m2() {
+    umount "$M2_MOUNT_POINT" 2>/dev/null
+    rm -rf "$M2_MOUNT_POINT"
+}
+
 function test_m2_ssd() {
-    echo "测试 M.2 硬盘..." | tee -a $LOG_FILE
-    lsblk | grep nvme
+    log "测试 M.2 硬盘..."
+    if ! lsblk | grep nvme; then
+        log "未检测到M.2设备"
+        return 1
+    fi
+
+    if ! mount_m2_disk; then
+        log "M.2磁盘挂载失败"
+        cleanup_m2
+        return 2
+    fi
+    
+    if rw_test_m2; then
+        log "M.2磁盘测试成功 ✅"
+        cleanup_m2
+        return 0
+    else
+        log "M.2磁盘测试失败 ❌"
+        cleanup_m2
+        return 3
+    fi
+    
 }
 
 # 3. 测试 SATA 硬盘
@@ -67,10 +122,6 @@ TF_DEVICE=""
 MOUNT_POINT="/mnt/tfcard"
 TEST_FILE="tfcard_test_file.txt"
 TEST_STRING="RK3588_TFCARD_TEST"
-
-log() {
-    echo "[TFTEST] $1"
-}
 
 # 查找TF卡设备（通常是 /dev/mmcblk1 或类似）
 find_tfcard_device() {
