@@ -123,16 +123,49 @@ function test_m2_ssd() {
     
 }
 
+# 查找SATA设备
+function find_sata_device() {
+    for dev in /dev/sd[a-z]; do
+        if [ -b "$dev" ]; then
+            log "找到M.2硬盘设备: $dev"
+            M2_DEVICE=$dev
+            return 0
+        fi
+    done
+    return 1
+}
+
 # 3. 测试 SATA 硬盘
 function test_sata() {
-    echo "测试 SATA 硬盘..." | tee -a $LOG_FILE
-    lsblk | grep sata
+    log "测试 SATA 硬盘..."
+    #lsblk | grep sata
+
+    if ! find_sata_device; then
+        log "未检测到SATA设备"
+        return 1
+    fi
+
+    if ! mount_m2_disk; then
+        log "SATA磁盘挂载失败"
+        cleanup_m2
+        return 2
+    fi
+    
+    if rw_test_m2; then
+        log "SATA磁盘测试成功 ✅"
+        cleanup_m2
+        return 0
+    else
+        log "SATA磁盘测试失败 ❌"
+        cleanup_m2
+        return 3
+    fi
 }
 
 TF_DEVICE=""
-MOUNT_POINT="/mnt/tfcard"
-TEST_FILE="tfcard_test_file.txt"
-TEST_STRING="RK3588_TFCARD_TEST"
+TF_MOUNT_POINT="/mnt/tfcard"
+TF_TEST_FILE="tfcard_test_file.txt"
+TF_TEST_STRING="RK3588_TFCARD_TEST"
 
 # 查找TF卡设备（通常是 /dev/mmcblk1 或类似）
 find_tfcard_device() {
@@ -148,19 +181,19 @@ find_tfcard_device() {
 
 # 自动挂载TF卡
 mount_tfcard() {
-    mkdir -p "$MOUNT_POINT"
-    if mount | grep -q "$MOUNT_POINT"; then
-        umount "$MOUNT_POINT"
+    mkdir -p "$TF_MOUNT_POINT"
+    if mount | grep -q "$TF_MOUNT_POINT"; then
+        umount "$TF_MOUNT_POINT"
     fi
-    mount "${TF_DEVICE}p1" "$MOUNT_POINT" 2>/dev/null || mount "$TF_DEVICE" "$MOUNT_POINT"
+    mount "${TF_DEVICE}p1" "$TF_MOUNT_POINT" 2>/dev/null || mount "$TF_DEVICE" "$TF_MOUNT_POINT"
     return $?
 }
 
 # 测试写入和读取
 rw_test() {
-    echo "$TEST_STRING" > "$MOUNT_POINT/$TEST_FILE"
-    read_back=$(cat "$MOUNT_POINT/$TEST_FILE")
-    if [ "$read_back" == "$TEST_STRING" ]; then
+    echo "$TF_TEST_STRING" > "$TF_MOUNT_POINT/$TF_TEST_FILE"
+    read_back=$(cat "$TF_MOUNT_POINT/$TF_TEST_FILE")
+    if [ "$read_back" == "$TF_TEST_STRING" ]; then
         log "读写测试通过"
         return 0
     else
@@ -171,8 +204,8 @@ rw_test() {
 
 # 清理环境
 cleanup() {
-    umount "$MOUNT_POINT" 2>/dev/null
-    rm -rf "$MOUNT_POINT"
+    umount "$TF_MOUNT_POINT" 2>/dev/null
+    rm -rf "$TF_MOUNT_POINT"
 }
 
 function test_tfcard() {
