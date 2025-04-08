@@ -12,13 +12,13 @@ log() {
 
 # 1. 测试网卡
 function test_network() {
-    echo "测试网卡..." | tee -a $LOG_FILE
+    log "测试网卡..."
 #    ping -c 4 8.8.8.8 &> /dev/null
     local distro=""
     local nic1=""
     local nic2=""
-    local ip1="192.168.1.10"
-    local ip2="192.168.1.11"
+    local ip1="192.168.1.100"
+    local ip2="192.168.1.101"
     
     # 检测发行版
     if grep -qi "debian" /etc/os-release; then
@@ -238,30 +238,30 @@ function test_tfcard() {
 function test_usb_speed() {
     local target_speed=$1
 
-    echo "测试 USB 设备及其速度..." | tee -a $LOG_FILE
+    log "测试 USB 设备及其速度..."
 
     # 获取 usb-devices 输出
     usb_info=$(usb-devices)
     echo "$usb_info" >> $LOG_FILE
 
-    echo "检测到以下设备速度信息：" | tee -a $LOG_FILE
-    echo "$usb_info" | grep "Spd=" | tee -a $LOG_FILE
+    log "检测到以下设备速度信息："
+    log "$usb_info" | grep "Spd="
 
     if echo "$usb_info" | grep -q "Spd=$target_speed"; then
         case "$target_speed" in
             480)
-                echo "检测到 USB 2.0 设备" | tee -a $LOG_FILE
+                log "检测到 USB 2.0 设备"
                 ;;
             5000)
-                echo "检测到 USB 3.0 设备" | tee -a $LOG_FILE
+                log "检测到 USB 3.0 设备"
                 ;;
             *)
-                echo "检测到速度为 $target_speed 的 USB 设备" | tee -a $LOG_FILE
+                log "检测到速度为 $target_speed 的 USB 设备"
                 ;;
         esac
         return 0
     else
-        echo "未检测到速度为 $target_speed 的 USB 设备" | tee -a $LOG_FILE
+        log "未检测到速度为 $target_speed 的 USB 设备"
         return 1
     fi
 }
@@ -275,13 +275,13 @@ function test_usb3() {
 
 # 5. 测试 Type-C
 function test_typec() {
-    echo "测试 Type-C 端口..." | tee -a $LOG_FILE
+    log "测试 Type-C 端口..."
     dmesg | grep -i "type-c"
 }
 
 # 6. 测试 RTC
 function test_rtc() {
-    echo "测试 RTC..." | tee -a $LOG_FILE
+    log "测试 RTC..."
     hwclock -r
 }
 
@@ -402,8 +402,8 @@ function main() {
     echo "========================================"
     
     local LOG_FILE="rk3588_test.log"
-    echo "RK3588 外设接口自动化测试" | tee $LOG_FILE
-    echo "测试开始时间: $(date)" | tee -a $LOG_FILE
+    log "RK3588 外设接口自动化测试"
+    log "测试开始时间: $(date)"
 
     # 遍历执行所有测试
     for test in "${tests[@]}"; do
@@ -420,8 +420,8 @@ function main() {
         fi
     done
 
-    echo "测试结束时间: $(date)" | tee -a $LOG_FILE
-    echo "所有测试完成" | tee -a $LOG_FILE
+    log "测试结束时间: $(date)"
+    log "所有测试完成"
 
     # 生成测试报告
     echo -e "\n\n========================================"
@@ -461,51 +461,3 @@ function main() {
 # 执行主程序
 main
 exit $?
-
-## 主测试流程
-#function main() {
-#    declare -A test_results
-#    declare -a test_order  # 存储测试执行顺序
-#    local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
-#    local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
-#    local tests=("${auto_tests[@]}" "${manual_tests[@]}")
-#
-#    echo "========================================"
-#    echo "  RK3588 外设综合测试套件"
-#    echo "========================================"
-#
-#    local LOG_FILE="rk3588_test.log"
-#    echo "RK3588 外设接口自动化测试" | tee $LOG_FILE
-#    echo "测试开始时间: $(date)" | tee -a $LOG_FILE
-#
-#    # 遍历执行所有测试
-#    for test in "${tests[@]}"; do
-#        echo -e "\n▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌"
-#        "test_$test"
-#        test_results[$test]=$?
-#        test_order+=("$test")  # 按顺序记录测试项
-#        sleep 1
-#    done
-#
-#    echo "测试结束时间: $(date)" | tee -a $LOG_FILE
-#    echo "所有测试完成" | tee -a $LOG_FILE
-#
-#    # 生成测试报告
-#    echo -e "\n\n========================================"
-#    echo "          测试报告"
-#    echo "========================================"
-#    
-#    for test in "${test_order[@]}"; do
-#        local result="❌ FAIL"
-#        [ ${test_results[$test]} -eq 0 ] && result="✅ PASS"
-#        printf "%-12s %s\n" "${test}测试:" "$result"
-#        echo "[$(date +'%Y-%m-%d %H:%M:%S')] ${test}测试: $result" >> $LOG_FILE
-#    done
-#
-#    # 总体结果判断
-#    [[ "${test_results[@]}" =~ 1 ]] && return 1 || return 0
-#}
-#
-## 执行主程序
-#main
-#exit $?
