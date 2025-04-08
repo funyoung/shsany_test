@@ -63,6 +63,82 @@ function test_sata() {
     lsblk | grep sata
 }
 
+TF_DEVICE=""
+MOUNT_POINT="/mnt/tfcard"
+TEST_FILE="tfcard_test_file.txt"
+TEST_STRING="RK3588_TFCARD_TEST"
+
+log() {
+    echo "[TFTEST] $1"
+}
+
+# 查找TF卡设备（通常是 /dev/mmcblk1 或类似）
+find_tfcard_device() {
+    for dev in /dev/mmcblk1 /dev/mmcblk0; do
+        if [ -b "$dev" ]; then
+            log "找到TF卡块设备: $dev"
+            TF_DEVICE=$dev
+            return 0
+        fi
+    done
+    return 1
+}
+
+# 自动挂载TF卡
+mount_tfcard() {
+    mkdir -p "$MOUNT_POINT"
+    if mount | grep -q "$MOUNT_POINT"; then
+        umount "$MOUNT_POINT"
+    fi
+    mount "${TF_DEVICE}p1" "$MOUNT_POINT" 2>/dev/null || mount "$TF_DEVICE" "$MOUNT_POINT"
+    return $?
+}
+
+# 测试写入和读取
+rw_test() {
+    echo "$TEST_STRING" > "$MOUNT_POINT/$TEST_FILE"
+    read_back=$(cat "$MOUNT_POINT/$TEST_FILE")
+    if [ "$read_back" == "$TEST_STRING" ]; then
+        log "读写测试通过"
+        return 0
+    else
+        log "读写测试失败"
+        return 1
+    fi
+}
+
+# 清理环境
+cleanup() {
+    umount "$MOUNT_POINT" 2>/dev/null
+    rm -rf "$MOUNT_POINT"
+}
+
+function test_tfcard() {
+    # 主流程
+    log "开始TF卡接口测试..."
+    
+    if ! find_tfcard_device; then
+        log "未检测到TF卡设备"
+        return 1
+    fi
+    
+    if ! mount_tfcard; then
+        log "TF卡挂载失败"
+        cleanup
+        return 2
+    fi
+    
+    if rw_test; then
+        log "TF卡接口测试成功 ✅"
+        cleanup
+        return 0
+    else
+        log "TF卡接口测试失败 ❌"
+        cleanup
+        return 3
+    fi
+}
+
 # 4. 测试 USB2.0 & USB3.0
 function test_usb_speed() {
     local target_speed=$1
@@ -219,7 +295,7 @@ function load_config() {
 function main() {
     declare -A test_results
     declare -a test_order  # 存储测试执行顺序
-    local auto_tests=("network" "m2_ssd" "sata" "usb2" "usb3" "typec" "rtc")
+    local auto_tests=("network" "m2_ssd" "sata" "tfcard" "usb2" "usb3" "typec" "rtc")
     local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
     local tests=("${auto_tests[@]}" "${manual_tests[@]}")
     
