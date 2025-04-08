@@ -60,6 +60,16 @@ M2_DEVICE=""
 M2_MOUNT_POINT="/mnt/m2disk"
 M2_TEST_FILE="m2_test_file.txt"
 M2_TEST_STRING="RK3588_M2_DISK_TEST"
+function find_m2_device() {
+    for dev in /dev/nemv0n1 /dev/sd[a-z]; do
+        if [ -b "$dev" ]; then
+            log "找到M.2硬盘设备: $dev"
+            M2_DEVICE=$dev
+            return 0
+        fi
+    done
+    return 1
+}
 function mount_m2_disk() {
     mkdir -p "$M2_MOUNT_POINT"
     if mount | grep -q "$M2_MOUNT_POINT"; then
@@ -89,7 +99,8 @@ function cleanup_m2() {
 
 function test_m2_ssd() {
     log "测试 M.2 硬盘..."
-    if ! lsblk | grep nvme; then
+    #lsblk | grep nvme;
+    if ! find_m2_device; then
         log "未检测到M.2设备"
         return 1
     fi
