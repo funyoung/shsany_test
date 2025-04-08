@@ -64,30 +64,42 @@ function test_sata() {
 }
 
 # 4. 测试 USB2.0 & USB3.0
-function test_usb() {
-    #echo "测试 USB 设备..." | tee -a $LOG_FILE
-    #lsusb | tee -a $LOG_FILE
-    echo "测试 USB 设备及其速度..." | tee -a $LOG_FILE
-    # 输出 usb-devices 信息并保存到变量中
-    usb_info=$(usb-devices)
-    #echo "$usb_info" | tee -a $LOG_FILE
+function test_usb_speed() {
+    local target_speed=$1
 
-    # 查找所有设备的速度信息
+    echo "测试 USB 设备及其速度..." | tee -a $LOG_FILE
+
+    # 获取 usb-devices 输出
+    usb_info=$(usb-devices)
+    echo "$usb_info" >> $LOG_FILE
+
     echo "检测到以下设备速度信息：" | tee -a $LOG_FILE
     echo "$usb_info" | grep "Spd=" | tee -a $LOG_FILE
 
-    # 针对每个设备做初步判断
-    if echo "$usb_info" | grep -q "Spd=480"; then
-        echo "检测到 USB 2.0 设备" | tee -a $LOG_FILE
+    if echo "$usb_info" | grep -q "Spd=$target_speed"; then
+        case "$target_speed" in
+            480)
+                echo "检测到 USB 2.0 设备" | tee -a $LOG_FILE
+                ;;
+            5000)
+                echo "检测到 USB 3.0 设备" | tee -a $LOG_FILE
+                ;;
+            *)
+                echo "检测到速度为 $target_speed 的 USB 设备" | tee -a $LOG_FILE
+                ;;
+        esac
+        return 0
     else
+        echo "未检测到速度为 $target_speed 的 USB 设备" | tee -a $LOG_FILE
         return 1
     fi
-    if echo "$usb_info" | grep -q "Spd=5000"; then
-        echo "检测到 USB 3.0 设备" | tee -a $LOG_FILE
-    else
-        return 2
-    fi
-    return 0
+}
+function test_usb2() {
+    test_usb_speed 480
+}
+
+function test_usb3() {
+    test_usb_speed 5000
 }
 
 # 5. 测试 Type-C
@@ -207,7 +219,7 @@ function load_config() {
 function main() {
     declare -A test_results
     declare -a test_order  # 存储测试执行顺序
-    local auto_tests=("network" "m2_ssd" "sata" "usb" "typec" "rtc")
+    local auto_tests=("network" "m2_ssd" "sata" "usb2" "usb3" "typec" "rtc")
     local manual_tests=("hdmiin" "camera" "mipi" "audio" "40pin")
     local tests=("${auto_tests[@]}" "${manual_tests[@]}")
     
